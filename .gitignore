@@ -1,0 +1,36 @@
+*.class
+
+# ignore transient files like classpath and eclipse-settings files
+# because they contain machine-dependent info and should not be committed
+*.classpath
+*.settings
+
+# vim temp files:
+*.swp
+
+# mergetool files
+*.orig
+
+# reports
+*.html
+
+# packages and binaries:
+*.jar
+*.war
+*.ear
+
+# intelliJ idea workspace-specific files:
+.idea/workspace.xml
+
+# directory patterns:
+# never commit binaries, build artifacts, logs or reports:
+.metadata/
+bin/
+target/
+bin/
+logs/
+surefire-reports/
+reports/
+classes/
+classes/conf/
+.idea/dictionaries/
