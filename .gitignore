@@ -5,8 +5,10 @@
 *.classpath
 *.settings
 
-# vim temp files:
+# vim, kate and other temp files:
 *.swp
+*swp
+*~
 
 # mergetool files
 *.orig

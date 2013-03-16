@@ -24,6 +24,8 @@ sub fetch_json_page
      
         # these are some nice json options to relax restrictions a bit:
         my $json_text = $json->allow_nonref->utf8->relaxed->escape_slash->loose->allow_singlequote->allow_barekey->decode($content);
+        
+        print "\n\n\n JSON TEXT: $json_text";
 
         # json_text now contains the decoded JSON
      
