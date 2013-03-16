@@ -38,17 +38,22 @@ sub fetch_json_page
             # ToDo: join the elements of the authors array with commas into a string, then put that into $item_hash{authors}
             # $item_hash{authors} = $item->{description};
 
+
             $item_hash{thumbnail_url} = $item->{volumeInfo}->{imageLinks}->{thumbnail};
             $item_hash{publisher} = $item->{volumeInfo}->{publisher};
             $item_hash{pageCount} = $item->{volumeInfo}->{pageCount};
+            $item_hash{description} = $item->{volumeInfo}->{description};
      
             # print item information:
-            print "Found Item:\n";
+            print "\n\nFound Item:\n";
             while (my($k, $v) = each (%item_hash))
             {
-                print "$k => $v\n";
+                print "\t$k: $v\n";
             }
-            print "\n";
+            foreach my $author( @{ $item->{volumeInfo}->{authors} } )
+            {   
+               print "\tauthor: $author\n";
+            } 
      
             $item_number++;
         }
@@ -59,5 +64,6 @@ sub fetch_json_page
     }
 }
 
-fetch_json_page("https://www.googleapis.com/books/v1/volumes?q=isbn:8179923703");
+#fetch_json_page("https://www.googleapis.com/books/v1/volumes?q=isbn:8179923703");
+fetch_json_page("https://www.googleapis.com/books/v1/volumes?q=isbn:0073523321");
 
