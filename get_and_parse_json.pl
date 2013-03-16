@@ -65,5 +65,19 @@ sub fetch_json_page
 }
 
 #fetch_json_page("https://www.googleapis.com/books/v1/volumes?q=isbn:8179923703");
-fetch_json_page("https://www.googleapis.com/books/v1/volumes?q=isbn:0073523321");
+
+my $isbn;
+
+if ( $#ARGV == 0 )
+{
+    $isbn = $ARGV[0];
+}
+else {
+    $isbn = 8179923703 # Wisdom For The New Millenium is the "default" isbn
+}
+
+
+
+
+fetch_json_page("https://www.googleapis.com/books/v1/volumes?q=isbn:".$isbn);
 
