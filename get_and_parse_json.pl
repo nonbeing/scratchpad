@@ -23,11 +23,12 @@ sub fetch_json_page
         my $json = new JSON;
      
         # these are some nice json options to relax restrictions a bit:
-        my $json_text = $json->allow_nonref->utf8->relaxed->escape_slash->loose->allow_singlequote->allow_barekey->decode($content);
+        # json_text will contain the decoded JSON
+        my $json_text = $json->indent->allow_nonref->utf8->relaxed->escape_slash->loose->allow_singlequote->allow_barekey->decode($content);
         
-        print "\n\n\n JSON TEXT: $json_text";
+        my $pretty_print_json = $json->pretty->encode($json_text);
+        print "\n\n\n JSON TEXT: $pretty_print_json";
 
-        # json_text now contains the decoded JSON
      
         # iterate over each element in the items[] array:
         my $item_number = 1;
@@ -68,18 +69,7 @@ sub fetch_json_page
 
 #fetch_json_page("https://www.googleapis.com/books/v1/volumes?q=isbn:8179923703");
 
-my $isbn;
 
-if ( $#ARGV == 0 )
-{
-    $isbn = $ARGV[0];
-}
-else {
-    $isbn = 8179923703 # Wisdom For The New Millenium is the "default" isbn
-}
-
-
-
+my $isbn = $ARGV[0] || 8179923703;
 
 fetch_json_page("https://www.googleapis.com/books/v1/volumes?q=isbn:".$isbn);
-
