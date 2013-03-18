@@ -39,7 +39,7 @@ my @marc_records = ();
 my $pageCount_suffix = 'p.';
 
 # NOTE: You have to specify country=?? in the URL for Google Books API to work:
-my $google_books_url = 'https://www.googleapis.com/books/v1/volumes?country=IN&projection=full&maxResults=10&q=';
+my $google_books_url = 'https://www.googleapis.com/books/v1/volumes?country=IN&projection=full&maxResults=5&q=';
 my $mech =  WWW::Mechanize->new();
 
 
@@ -48,7 +48,6 @@ my $query   = $input->param('q');
 my @value   = $input->param('value');
 my $page    = $input->param('page') || 1;
 my $success = $input->param('biblioitem');
-my $results_per_page = 20; 
 
 my ( $template, $loggedinuser, $cookie ) = get_template_and_user(
     {   
@@ -143,7 +142,7 @@ sub next_marc {
 
     my $selfLink =  $item->{selfLink};
 
-    $mech->get( $selfLink );
+    $mech->get( $selfLink . "?country=IN");
 
     my $single_book_json = decode_json $mech->content;
 
