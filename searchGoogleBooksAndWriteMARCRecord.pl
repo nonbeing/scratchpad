@@ -15,6 +15,7 @@ my $debug = $ENV{DEBUG} || 0;
 
 my $global_json = {};
 my $global_json_item_count = {};
+my @marc_records = ();
 
 my $pageCount_suffix = 'p.'; # English
 
@@ -68,7 +69,7 @@ sub search {
 
 	die "need query" unless defined $query;
 
-	my $url = 'https://www.googleapis.com/books/v1/volumes?q=' . $query;
+	my $url = 'https://www.googleapis.com/books/v1/volumes?projection=full&maxResults=10&q=' . $query;
 
     print "[INFO] Opening URL: $url\n";
 
@@ -188,17 +189,54 @@ sub next_marc {
 
 		} # if imageLinks
 
-		$marc->add_fields(856,'4','2',
-			'3'=> 'Info link',
-			'u' => $vi->{infoLink},
-		);
-		$marc->add_fields(856,'4','2',
-			'3'=> 'Show reviews link',
-			'u' => $vi->{showReviewsLink},
-		);
+        if ( exists $vi->{infoLink} ) {
+            $marc->add_fields(856,'4','2',
+                '3'=> 'Info link',
+                'u' => $vi->{infoLink},
+            );
+        }
+
+        if ( exists $vi->{showReviewsLink} ) {
+    		$marc->add_fields(856,'4','2',
+	    		'3'=> 'Show reviews link',
+		    	'u' => $vi->{showReviewsLink},
+    		);
+        }
+
+        if ( exists $item->{selfLink} ) {
+    		$marc->add_fields(856,'4','2',
+	    		'3'=> 'Self Link',
+		    	'u' => $item->{selfLink},
+    		);
+        }
+        if ( $item->{accessInfo}->{epub}->{isAvailable} ) {
+    		$marc->add_fields(945,'4','2',
+	    		'1'=> '[ebook (epub) available]',
+                '2'=> 'epub sample link',
+		    	'u' => $item->{accessInfo}->{epub}->{acsTokenLink},
+    		);
+        }
+        else {
+                $marc->add_fields(945,'4','2',
+                    '3'=> '[ebook (epub) not available]',
+                );   
+        }
+
+        if ( $item->{accessInfo}->{pdf}->{isAvailable} ) {
+    		$marc->add_fields(945,'4','2',
+	    		'1'=> '[ebook (pdf) available]',
+                '2'=> 'pdf sample link',
+		    	'u' => $item->{accessInfo}->{pdf}->{acsTokenLink},
+    		);
+        }
+        else {
+                $marc->add_fields(945,'4','2',
+                    '3'=> '[ebook (pdf) not available]',
+                );  
+        }   
 
 		my $leader = $marc->leader;
-		print "\n[INFO] LEADER: [$leader]\n";
+		#print "\n[INFO] LEADER: [$leader]\n";
 		$leader =~ s/^(....).../$1nam/;
 		$marc->leader( $leader );
 
@@ -206,17 +244,18 @@ sub next_marc {
 		warn "[ERROR] no volumeInfo in: ", dump($item);
 	}
 
-	$marc->add_fields( 856, ' ', ' ', 'u' => $item->{accessInfo}->{webReaderLink} );
+#	$marc->add_fields( 856, ' ', ' ', 'u' => $item->{accessInfo}->{webReaderLink} );
 #	$marc->add_fields( 520, ' ', ' ', 'a' => $item->{searchInfo}->{textSnippet} ); # duplicate of description
 
 #	warn "# hash ",dump($hash);
     binmode STDOUT, ':utf8'; # prevent the "Wide character in print" warning on STDOUT: http://stackoverflow.com/a/2468550/376240
 
-	print "\n[INFO] FORMATTED MARC RECORD: \n", $marc->as_formatted;
+	#print "\n[INFO] FORMATTED MARC RECORD: \n", $marc->as_formatted;
 
-	save_marc_file( $id, $isbn, $marc->as_usmarc );
+	#save_marc_file( $id, $isbn, $marc->as_usmarc );
 
-    print "[INFO] DONE!\n\n\n";
+    push(@marc_records, $marc);
+
 	return $id;
 }
 
@@ -227,6 +266,33 @@ my $myQuery = join(' ', @ARGV) || 'Sri Sri Ravi Shankar';
 my $hits = search( $myQuery );
 
 foreach ( my $count = 1; $count <= $hits; $count++ ) { 
-    print "\n\n\n[INFO] HIT NUMBER: $count";
     my $marc = next_marc;
 }
+
+print "\n\n\nThese are the MARC records:";
+
+
+
+foreach my $record( @marc_records) {
+        print "\n\n$record\n";
+        print "Title: ", $record->title, "\n";
+        print "Author: ", $record->author, "\n";
+        
+        foreach my $field ( $record->field('700') ) {
+            print "Additional Author: ", $field->as_string(), "\n";
+        }
+
+        foreach my $field ( $record->field('650') ) {
+            print "Subject: ", $field->as_string(), "\n";
+        }
+
+        foreach my $field ( $record->field('856') ) {
+            print "Link: ", $field->as_string(), "\n";
+        }
+
+        foreach my $field ( $record->field('945') ) {
+            print "ebook availability: ", $field->as_string(), "\n";
+        }
+}
+
+
