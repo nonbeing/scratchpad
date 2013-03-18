@@ -265,6 +265,8 @@ sub next_marc {
                 );  
         }   
 
+        $marc->add_fields(546,' ',' ','a' => "Text language (ISO-639-1 code): " . $vi->{language} ) if $vi->{language};
+
 		my $leader = $marc->leader;
 		#print "\n[INFO] LEADER: [$leader]\n";
 		$leader =~ s/^(....).../$1nam/;
@@ -323,6 +325,10 @@ foreach my $record( @marc_records) {
 
         foreach my $field ( $record->field('945') ) {
             print "ebook availability: ", $field->as_string(), "\n";
+        }
+
+        foreach my $field ( $record->field('546') ) {
+            print "Language: ", $field->as_string(), "\n";
         }
 
         foreach my $field ( $record->field('300') ) {
