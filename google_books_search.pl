@@ -35,7 +35,13 @@ use C4::Search;
   
 my $global_json = {};
 my $global_json_item_count = {};
+my @marc_records = (); 
 my $pageCount_suffix = 'p.';
+
+# NOTE: You have to specify country=?? in the URL for Google Books API to work:
+my $google_books_url = 'https://www.googleapis.com/books/v1/volumes?country=IN&projection=full&maxResults=10&q=';
+my $mech =  WWW::Mechanize->new();
+
 
 my $input = new CGI;
 my $query   = $input->param('q');
@@ -76,18 +82,13 @@ sub search {
 
     die "need query" unless defined $query;
 
-    # NOTE: You have to specify country=?? in the URL for Google Books API to work:
-    my $url = 'https://www.googleapis.com/books/v1/volumes?country=IN&q=' . $query;
-
-    #print "[INFO] Opening URL: $url\n";
-
-    my $mech =  WWW::Mechanize->new();
+    my $full_url = $google_books_url . $query;
 
     # NOTE: You also (usually) have to specify a valid user agent for Mechanize to work with Google Books API (to prevent being blocked as a bot)
     $mech->agent('User-Agent=Mozilla/5.0 (Macintosh; U; Intel Mac OS X 10.5; en-US; rv:1.9.1.5) Gecko/20091102 Firefox/3.5.7');
 
     # Finally, open the URL
-    $mech->get( $url );
+    $mech->get( $full_url );
 
     my $json = decode_json $mech->content;
     #warn "[DEBUG] json dump: ", dump($json) if $debug;
@@ -96,7 +97,8 @@ sub search {
 
     if ( exists $json->{items} ) {
         $hits = $#{ $json->{items} } + 1;
-    } else {
+    } 
+    else {
         #warn "[WARN] Investigate anomalous API results in: ", $mech->content;
         return;
     }
@@ -139,10 +141,16 @@ sub next_marc {
 
     my $id = $item->{id} || die "no id";
 
+    my $selfLink =  $item->{selfLink};
+
+    $mech->get( $selfLink );
+
+    my $single_book_json = decode_json $mech->content;
+
     my $marc = MARC::Record->new;
     $marc->encoding('utf-8');
 
-    if ( my $vi = $item->{volumeInfo} ) {
+    if ( my $vi = $single_book_json->{volumeInfo} ) {
 
         my ($sec,$min,$hour,$mday,$mon,$year,$wday,$yday,$isdst) = localtime(time);
 
@@ -179,8 +187,29 @@ sub next_marc {
             );
         }
 
-        $marc->add_fields(300,' ',' ','a' => $vi->{pageCount} . $pageCount_suffix ) if $vi->{pageCount};
-        
+        my $dimensions = $vi->{dimensions};
+
+        my $dims = undef;
+
+        if ($dimensions->{height} && $dimensions->{width} && $dimensions->{thickness}) {
+            $dims = $dimensions->{height} . " x " . $dimensions->{width} . " x " . $dimensions->{thickness};
+        }
+        elsif ($dimensions->{height} && $dimensions->{width}) {
+            $dims = $dimensions->{height} . " x " . $dimensions->{width};
+        }
+        elsif ($dimensions->{height}) {
+            $dims = $dimensions->{height};
+        }
+
+        if ($vi->{pageCount} && $dims) {
+            $marc->add_fields(300,' ',' ',
+                'a' => $vi->{pageCount} . $pageCount_suffix,
+                'c' => $dims);
+        }
+        elsif ($vi->{pageCount}) {
+            $marc->add_fields(300,' ',' ','a' => $vi->{pageCount} . $pageCount_suffix );
+        }
+
         $marc->add_fields(520,' ',' ','a' => $vi->{description} ) if $vi->{description};
 
         if ( ref $vi->{categories} eq 'ARRAY' ) {
@@ -202,25 +231,65 @@ sub next_marc {
 
         } # if imageLinks
 
-        $marc->add_fields(856,'4','2',
-            '3'=> 'Info link',
-            'u' => $vi->{infoLink},
-        );
-        $marc->add_fields(856,'4','2',
-            '3'=> 'Show reviews link',
-            'u' => $vi->{showReviewsLink},
-        );
+        if ( exists $vi->{infoLink} ) {
+            $marc->add_fields(856,'4','2',
+                '3'=> 'Info link',
+                'u' => $vi->{infoLink},
+            );
+        }
+
+        if ( exists $vi->{showReviewsLink} ) {
+            $marc->add_fields(856,'4','2',
+                '3'=> 'Show reviews link',
+                'u' => $vi->{showReviewsLink},
+            );
+        }
+
+        if ( exists $single_book_json->{selfLink} ) {
+            $marc->add_fields(856,'4','2',
+                '3'=> 'Self Link',
+                'u' => $single_book_json->{selfLink},
+            );
+        }
+        if ( $single_book_json->{accessInfo}->{epub}->{isAvailable} ) {
+            $marc->add_fields(945,'4','2',
+                '1'=> '[ebook (epub) available]',
+                '2'=> 'epub sample link',
+                'u' => $single_book_json->{accessInfo}->{epub}->{acsTokenLink},
+            );
+        }
+        else {
+                $marc->add_fields(945,'4','2',
+                    '3'=> '[ebook (epub) not available]',
+                );
+        }
+
+        if ( $single_book_json->{accessInfo}->{pdf}->{isAvailable} ) {
+            $marc->add_fields(945,'4','2',
+                '1'=> '[ebook (pdf) available]',
+                '2'=> 'pdf sample link',
+                'u' => $single_book_json->{accessInfo}->{pdf}->{acsTokenLink},
+            );
+        }
+        else {
+                $marc->add_fields(945,'4','2',
+                    '3'=> '[ebook (pdf) not available]',
+                );
+        }
+
+        $marc->add_fields(546,' ',' ','a' => "Text language (ISO-639-1 code): " . $vi->{language} ) if $vi->{language};
 
         my $leader = $marc->leader;
         #print "\n[INFO] LEADER: [$leader]\n";
         $leader =~ s/^(....).../$1nam/;
         $marc->leader( $leader );
 
-    } else {
+    } 
+    else {
         #warn "[ERROR] no volumeInfo in: ", dump($item);
     }
 
-    $marc->add_fields( 856, ' ', ' ', 'u' => $item->{accessInfo}->{webReaderLink} );
+#   $marc->add_fields( 856, ' ', ' ', 'u' => $item->{accessInfo}->{webReaderLink} );
 #   $marc->add_fields( 520, ' ', ' ', 'a' => $item->{searchInfo}->{textSnippet} ); # duplicate of description
 
 #   #warn "# hash ",dump($hash);
@@ -228,36 +297,26 @@ sub next_marc {
 
     #print "\n[INFO] FORMATTED MARC RECORD: \n", $marc->as_formatted;
 
-    $template->param (
-        marc_record => $marc->as_formatted
-    );
+    push(@marc_records, $marc);
+
     #save_marc_file( $id, $isbn, $marc->as_usmarc );
 
-    #print "MARC RECORD: ", $marc->as_formatted;
-    #print "[INFO] DONE!\n\n\n";
     return $id;
 }
-
-
-
-
-
-
-
-
 
 if ($query) {
 
     my $hits = search( $query );
     
-    $template->param (
-        hits => $hits
-    );
-    
-    foreach ( my $count = 1; $count <= 1; $count++ ) { 
-        #print "\n\n\n[INFO] HIT NUMBER: $count";
+    foreach ( my $count = 1; $count <= $hits; $count++ ) { 
         my $marc = next_marc;
     }
+
+    $template->param (
+        hits => $hits,
+        query => $query,
+        marc_records => \@marc_records,
+    );
 }
 
 output_html_with_http_headers $input, $cookie, $template->output;

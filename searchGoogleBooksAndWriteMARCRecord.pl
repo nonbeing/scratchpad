@@ -52,18 +52,6 @@ my $mech =  WWW::Mechanize->new();
     # @attr 1=1007 standard-id 
     # @attr 1=1016 any
     
-sub usemap {{
-	4		=> 'intitle:',
-	7		=> 'isbn:',
-	8		=> 'isbn:', # FIXME?
-	1003	=> 'inauthor:',
-#	16		=> '',
-	21		=> 'subject:',
-	12		=> 'lccn:',
-#	1007	=> '',
-	1016	=> '',
-}};
-
 
 
 sub search {
