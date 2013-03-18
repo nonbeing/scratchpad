@@ -11,14 +11,44 @@
 <div id="breadcrumbs"><a href="/cgi-bin/koha/mainpage.pl">Home</a> &rsaquo; Cataloging</div>
 
 [% IF ( hits ) %]
-    [% hits %] result(s) found in Google Books.
-[% END %]
+[% count = 1 %]
 <div class="searchresults">
-    [% IF ( marc_record ) %]
-    <b>This is the MARC record:</b>
-    <br><br>[% marc_record %]
-    [% END %]
+    <br></br> <h3>Showing [% hits %] result(s) from Google Books:</h3>
+        <table>
+            <tr>
+                <th>Number</th>
+                <th>Title</th>
+                <th>Author</th>
+                <th>ISBN</th>
+                <th>Subject(s)</th>
+                <th>Page count</th>
+            </tr>
+            [% FOREACH record IN marc_records %]
+            [% IF ( loop.odd ) %]
+                <tr>
+            [% ELSE %]
+                <tr class="highlight">
+            [% END %]
+                <td> [% count %] </td>
+                <td> [% record.title %] </td>
+                <td> [% record.author %] </td>
+
+                [% isbn = record.field('020').shift %]
+                <td> [% isbn.as_string() %] </td>
+
+                [% subject = record.field('650').shift %]
+                <td> [% subject.as_string() %] </td>
+
+                <td> [% record.field('300').subfield('a') %] </td>
+            </tr>
+            [% count = count + 1 %]
+            [% END %]    
+        </table>
 </div>
+[% ELSE %]
+<br></br>
+<h3>Google Books does not have any results for your query:  "[% query %]" </h3>
+[% END %]
 
 
-[% INCLUDE 'intranet-bottom.inc' %]  
+[% INCLUDE 'intranet-bottom.inc' %] 

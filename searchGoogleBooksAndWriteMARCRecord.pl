@@ -19,7 +19,7 @@ my @marc_records = ();
 
 my $pageCount_suffix = 'p.'; # English
 
-my $google_books_url = 'https://www.googleapis.com/books/v1/volumes?country=IN&projection=full&maxResults=10&q=';
+my $google_books_url = 'https://www.googleapis.com/books/v1/volumes?country=IN&projection=full&maxResults=5&q=';
 my $mech =  WWW::Mechanize->new();
 
 
@@ -303,9 +303,12 @@ foreach my $record( @marc_records) {
             print "Additional Author: ", $field->as_string(), "\n";
         }
 
+        my $x = undef;
         foreach my $field ( $record->field('650') ) {
-            print "Subject: ", $field->as_string(), "\n";
+            #print "Subject: ", $field->as_string(), "\n";
+            $x = $x . ", " . $field->as_string();
         }
+        print "Subjects: ", $x;
 
         foreach my $field ( $record->field('856') ) {
             print "Link: ", $field->as_string(), "\n";
