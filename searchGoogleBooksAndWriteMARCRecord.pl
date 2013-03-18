@@ -19,6 +19,8 @@ my @marc_records = ();
 
 my $pageCount_suffix = 'p.'; # English
 
+my $google_books_url = 'https://www.googleapis.com/books/v1/volumes?country=IN&projection=full&maxResults=10&q=';
+my $mech =  WWW::Mechanize->new();
 
 
     # based on http://code.google.com/apis/books/docs/v1/using.html#PerformingSearch
@@ -69,12 +71,11 @@ sub search {
 
 	die "need query" unless defined $query;
 
-	my $url = 'https://www.googleapis.com/books/v1/volumes?projection=full&maxResults=10&q=' . $query;
+    my $full_url = $google_books_url . $query;
 
-    print "[INFO] Opening URL: $url\n";
+    print "[INFO] Opening URL: $full_url\n";
 
-	my $mech =  WWW::Mechanize->new();
-	$mech->get( $url );
+	$mech->get( $full_url );
 
 	my $json = decode_json $mech->content;
 	warn "[DEBUG] json dump: ", dump($json) if $debug;
@@ -122,14 +123,22 @@ sub next_marc {
 
 	my $item = $global_json->{items}->[ $global_json_item_count++ ];
 
-	warn "[DEBUG] item = ",dump($item) if $debug;
+	#warn "[DEBUG] item = ",dump($item) if $debug;
 
 	my $id = $item->{id} || die "no id";
+
+    my $selfLink =  $item->{selfLink};
+
+    $mech->get( $selfLink );
+
+    my $single_book_json = decode_json $mech->content;
+    warn "[DEBUG] single_book_json dump: ", dump($single_book_json) if $debug;
+
 
 	my $marc = MARC::Record->new;
 	$marc->encoding('utf-8');
 
-	if ( my $vi = $item->{volumeInfo} ) {
+	if ( my $vi = $single_book_json->{volumeInfo} ) {
 
 		my ($sec,$min,$hour,$mday,$mon,$year,$wday,$yday,$isdst) = localtime(time);
 
@@ -166,8 +175,29 @@ sub next_marc {
 			);
 		}
 
-		$marc->add_fields(300,' ',' ','a' => $vi->{pageCount} . $pageCount_suffix ) if $vi->{pageCount};
-		
+        my $dimensions = $vi->{dimensions};
+
+        my $dims = undef;
+
+        if ($dimensions->{height} && $dimensions->{width} && $dimensions->{thickness}) {
+            $dims = $dimensions->{height} . " x " . $dimensions->{width} . " x " . $dimensions->{thickness};
+        }
+        elsif ($dimensions->{height} && $dimensions->{width}) {
+            $dims = $dimensions->{height} . " x " . $dimensions->{width};
+        }
+        elsif ($dimensions->{height}) {
+            $dims = $dimensions->{height};
+        }
+    
+        if ($vi->{pageCount} && $dims) {
+            $marc->add_fields(300,' ',' ',
+                'a' => $vi->{pageCount} . $pageCount_suffix, 
+                'c' => $dims); 
+		}
+        elsif ($vi->{pageCount}) {
+            $marc->add_fields(300,' ',' ','a' => $vi->{pageCount} . $pageCount_suffix );
+        }
+
 		$marc->add_fields(520,' ',' ','a' => $vi->{description} ) if $vi->{description};
 
  		if ( ref $vi->{categories} eq 'ARRAY' ) {
@@ -203,17 +233,17 @@ sub next_marc {
     		);
         }
 
-        if ( exists $item->{selfLink} ) {
+        if ( exists $single_book_json->{selfLink} ) {
     		$marc->add_fields(856,'4','2',
 	    		'3'=> 'Self Link',
-		    	'u' => $item->{selfLink},
+		    	'u' => $single_book_json->{selfLink},
     		);
         }
-        if ( $item->{accessInfo}->{epub}->{isAvailable} ) {
+        if ( $single_book_json->{accessInfo}->{epub}->{isAvailable} ) {
     		$marc->add_fields(945,'4','2',
 	    		'1'=> '[ebook (epub) available]',
                 '2'=> 'epub sample link',
-		    	'u' => $item->{accessInfo}->{epub}->{acsTokenLink},
+		    	'u' => $single_book_json->{accessInfo}->{epub}->{acsTokenLink},
     		);
         }
         else {
@@ -222,11 +252,11 @@ sub next_marc {
                 );   
         }
 
-        if ( $item->{accessInfo}->{pdf}->{isAvailable} ) {
+        if ( $single_book_json->{accessInfo}->{pdf}->{isAvailable} ) {
     		$marc->add_fields(945,'4','2',
 	    		'1'=> '[ebook (pdf) available]',
                 '2'=> 'pdf sample link',
-		    	'u' => $item->{accessInfo}->{pdf}->{acsTokenLink},
+		    	'u' => $single_book_json->{accessInfo}->{pdf}->{acsTokenLink},
     		);
         }
         else {
@@ -240,8 +270,9 @@ sub next_marc {
 		$leader =~ s/^(....).../$1nam/;
 		$marc->leader( $leader );
 
-	} else {
-		warn "[ERROR] no volumeInfo in: ", dump($item);
+	} 
+    else {
+		warn "[ERROR] no volumeInfo in single_book_json: ", dump($single_book_json);
 	}
 
 #	$marc->add_fields( 856, ' ', ' ', 'u' => $item->{accessInfo}->{webReaderLink} );
@@ -292,6 +323,10 @@ foreach my $record( @marc_records) {
 
         foreach my $field ( $record->field('945') ) {
             print "ebook availability: ", $field->as_string(), "\n";
+        }
+
+        foreach my $field ( $record->field('300') ) {
+            print "Physical Description: ", $field->as_string(), "\n";
         }
 }
 
