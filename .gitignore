@@ -26,6 +26,7 @@
 
 # directory patterns:
 # never commit binaries, build artifacts, logs or reports:
+marc_files/
 .metadata/
 bin/
 target/

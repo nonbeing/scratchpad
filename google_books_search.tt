@@ -1,0 +1,24 @@
+[% INCLUDE 'doc-head-open.inc' %]
+<title>Koha &rsaquo; Cataloging</title>
+[% INCLUDE 'greybox.inc' %]
+[% INCLUDE 'doc-head-close.inc' %]
+
+</head>
+<body id="cat_addbooks" class="cat">
+[% INCLUDE 'header.inc' %]
+[% INCLUDE 'cataloging-search.inc' %]
+
+<div id="breadcrumbs"><a href="/cgi-bin/koha/mainpage.pl">Home</a> &rsaquo; Cataloging</div>
+
+[% IF ( hits ) %]
+    [% hits %] result(s) found in Google Books.
+[% END %]
+<div class="searchresults">
+    [% IF ( marc_record ) %]
+    <b>This is the MARC record:</b>
+    <br><br>[% marc_record %]
+    [% END %]
+</div>
+
+
+[% INCLUDE 'intranet-bottom.inc' %]  
