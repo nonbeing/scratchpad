@@ -212,6 +212,10 @@ sub next_marc {
                 '3'=> 'Info link',
                 'u' => $vi->{infoLink},
             );
+            $marc->add_fields(947,' ',' ',
+                '1'=> 'Info link: For Internal Processing',
+                'a' => $vi->{infoLink},
+            );
         }
 
         if ( exists $vi->{showReviewsLink} ) {
@@ -222,34 +226,34 @@ sub next_marc {
         }
 
         if ( exists $single_book_json->{selfLink} ) {
-    		$marc->add_fields(856,'4','2',
-	    		'3'=> 'Self Link',
-		    	'u' => $single_book_json->{selfLink},
+    		$marc->add_fields(946,' ',' ',
+	    		'1'=> 'Self Link: For Internal Processing',
+		    	'a' => $single_book_json->{selfLink},
     		);
         }
         if ( $single_book_json->{accessInfo}->{epub}->{isAvailable} ) {
-    		$marc->add_fields(945,'4','2',
+    		$marc->add_fields(945,' ',' ',
 	    		'1'=> '[ebook (epub) available]',
                 '2'=> 'epub sample link',
-		    	'u' => $single_book_json->{accessInfo}->{epub}->{acsTokenLink},
+		    	'a' => $single_book_json->{accessInfo}->{epub}->{acsTokenLink},
     		);
         }
         else {
-                $marc->add_fields(945,'4','2',
-                    '3'=> '[ebook (epub) not available]',
+                $marc->add_fields(945,' ',' ',
+                    '1'=> '[ebook (epub) not available]',
                 );   
         }
 
         if ( $single_book_json->{accessInfo}->{pdf}->{isAvailable} ) {
-    		$marc->add_fields(945,'4','2',
+    		$marc->add_fields(945,' ',' ',
 	    		'1'=> '[ebook (pdf) available]',
                 '2'=> 'pdf sample link',
-		    	'u' => $single_book_json->{accessInfo}->{pdf}->{acsTokenLink},
+		    	'b' => $single_book_json->{accessInfo}->{pdf}->{acsTokenLink},
     		);
         }
         else {
-                $marc->add_fields(945,'4','2',
-                    '3'=> '[ebook (pdf) not available]',
+                $marc->add_fields(945,' ',' ',
+                    '1'=> '[ebook (pdf) not available]',
                 );  
         }   
 
