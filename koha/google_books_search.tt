@@ -24,7 +24,7 @@
                 <th>Publisher</th>
                 <th>Publish Date</th>
                 <th>Page count</th>
-                <th>Preview MARC</th>
+                <th>View MARC</th>
                 <th>Import MARC</th>
             </tr>
             [% FOREACH record IN marc_records %]
