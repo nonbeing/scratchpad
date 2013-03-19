@@ -36,6 +36,7 @@ use C4::Search;
 my $global_json = {};
 my $global_json_item_count = {};
 my @marc_records = (); 
+my @breeding_loop = ();
 my $pageCount_suffix = 'p.';
 
 # NOTE: You have to specify country=?? in the URL for Google Books API to work:
@@ -75,6 +76,14 @@ my ( $template, $loggedinuser, $cookie ) = get_template_and_user(
     #     oclc: Returns results where the text following this keyword is the Online Computer Library Center number.
     #
 
+sub writeCgiLog{
+    my ($message) = @_;
+    my($logFile) = "/tmp/cgi.log";
+
+    open(LOGFILE,">>$logFile") or die("Can't open cgi log file: $logFile.\n");
+    print LOGFILE ("$message\n");
+    close(LOGFILE);
+}
 
 sub search {
     my ($query) = @_;
@@ -283,6 +292,7 @@ sub next_marc {
 
         $marc->add_fields(546,' ',' ','a' => "Text language (ISO-639-1 code): " . $vi->{language} ) if $vi->{language};
 
+
         my $leader = $marc->leader;
         #print "\n[INFO] LEADER: [$leader]\n";
         $leader =~ s/^(....).../$1nam/;
@@ -300,13 +310,19 @@ sub next_marc {
     #binmode STDOUT, ':utf8'; # prevent the "Wide character in print" warning on STDOUT: http://stackoverflow.com/a/2468550/376240
 
     #print "\n[INFO] FORMATTED MARC RECORD: \n", $marc->as_formatted;
-
+    my $random = rand(1000000000);
+    my ($notmarcrecord, $alreadyindb, $alreadyinfarm, $imported, $breedingid)= ImportBreeding( $marc->as_usmarc, 2, "Google Books API", "USMARC", $random, 'z3950' );
     push(@marc_records, $marc);
+    push(@breeding_loop, $breedingid);
 
+    #writeCgiLog("[DEBUG} MARC is: " . $marc->as_formatted);
+    #writeCgiLog("[DEBUG] Breeding id is : " . $breedingid);
+    #writeCgiLog("[DEBUG] Not marc record is: " . $notmarcrecord . "\n\n");
     #save_marc_file( $id, $isbn, $marc->as_usmarc );
 
     return $id;
 }
+
 
 if ($query) {
 
@@ -320,6 +336,7 @@ if ($query) {
         hits => $hits,
         query => $query,
         marc_records => \@marc_records,
+        breeding_loop => \@breeding_loop,
     );
 }
 
