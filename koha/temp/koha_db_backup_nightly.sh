@@ -9,6 +9,8 @@
 
 backupDir=${HOME}/libraryDBBackups
 backupLogfile=/var/log/backup.last.status.log
+s3Bucket="s3://kohalibrarydata"
+s3CMD=/usr/local/bin/s3cmd
 now=`date +%a.%d_%m_%Y.%H-%M`
 
 if [[ -e ${backupDir} ]]
@@ -25,23 +27,25 @@ mysqldump -u root -pJGDkohaAOL13may koha_library2 | bzip2 > koha_library2.${now}
 
 
 # what is the most recent koha_library2 backup in this directory?
-lastBackup=`ls -1 koha_library2*.bz2 | tail -1`
+lastBackup=`ls -1rt koha_library2*.bz2 | tail -1`
+#echo "[DEBUG] lastBackup is: ${lastBackup}" | tee -a ${backupLogfile} 
+#echo "[DEBUG] s3Bucket is: ${s3Bucket}" | tee -a ${backupLogfile} 
+
 
 # upload the DB backup to S3
-s3cmd put  ${lastBackup}  s3://kohalibrarydata | tee -a ${backupLogfile}
+${s3CMD} put  ${lastBackup} ${s3Bucket}  | tee -a ${backupLogfile}
 
 
-if [[ `s3cmd ls s3://kohalibrarydata | grep "${lastBackup}"` ]]
+if [[ `${s3CMD} ls ${s3Bucket} | grep "${lastBackup}"` ]]
 then
-    echo "[DONE] [${now}] Successfully backed up koha_library2 DB and pushed it to S3" | tee -a ${backupLogfile}
-    if [[ -e ${backupDir} ]]
-    then
-        rm -rf ${backupDir}/*
+    echo -e "[DONE] [${now}] Successfully backed up koha_library2 DB and pushed it to S3\n\n" | tee -a ${backupLogfile}
+    if [[ -e ${backupDir} ]]; then
+        rm -rf ${backupDir}/*.bz2
     else
         echo "[ERROR] ${backupDir} does not exist!!!" | tee -a ${backupLogfile}
     fi
 else
-    echo "[ERROR] [${now}] Did not find ${lastBackup} on S3... please investigate" | tee -a ${backupLogfile}
+    echo -e "[ERROR] [${now}] Did not find ${lastBackup} on S3... please investigate\n\n" | tee -a ${backupLogfile}
 fi    
 
 
